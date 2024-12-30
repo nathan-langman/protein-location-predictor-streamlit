@@ -1,151 +1,163 @@
 import streamlit as st
 import pandas as pd
-import math
 from pathlib import Path
+import config
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
+import os
 
-# Set the title and favicon that appear in the Browser's tab bar.
+import seaborn as sns
+
+DATA_FILEPATH = Path(__file__).parent/'data'
+print(DATA_FILEPATH)
+
 st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
+    page_title='Prot-loc-pred',
+    page_icon=':microscope:',
 )
-
-# -----------------------------------------------------------------------------
-# Declare some useful functions.
 
 @st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
+def get_full_data():
+    data_filename = os.path.join(DATA_FILEPATH, 'model_scoring.tsv')
+    df = pd.read_csv(data_filename, sep='\t', index_col=0)
+    return df
 
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
 
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
+@st.cache_data
+def get_data_cleaning_stats():
+    data_filename = os.path.join(DATA_FILEPATH, 'data_cleaning_stats.json')
+    df = pd.read_json(data_filename, typ='series')
+    df.name='Protein counts'
+    return df
 
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
+full_df = get_full_data()
+cleaning_stats = get_data_cleaning_stats()
 
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
+st.title(":microscope: Protein Location Predictor")
+st.write("Here we plot charts related to the initial data gathering and statistics for the proteins in our dataset.")
 
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
+st.subheader("Some example data")
+st.dataframe(full_df.head())
 
-    return gdp_df
 
-gdp_df = get_gdp_data()
+def plot_data_cleaning_stats():
+    fig, ax = plt.subplots()
+    sns.barplot(cleaning_stats/1000,ax=ax)
+    plt.xticks(rotation=45, ha='right')
+    vals = ax.get_yticks()
+    ax.set_yticklabels(['{:,.1f}k'.format(x) for x in vals])
+    for i in ax.containers:
+        ax.bar_label(i,fmt='{:,.1f}k')
 
-# -----------------------------------------------------------------------------
-# Draw the actual page
+    plt.close(fig)
+    return fig
 
-# Set the title that appears at the top of the page.
-'''
-# :earth_americas: GDP dashboard
+st.subheader("Data cleaning")
+fig = plot_data_cleaning_stats()
+st.pyplot(fig)
+st.write("We created this dataset by joining Uniref cluster data with sequence and location data for the representative protein of each cluster from uniprot.")
 
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
-'''
 
-# Add some spacing
-''
-''
+def plot_location_counts():
+    fig, ax = plt.subplots()
+    mass_cnts = {}
+    for c in config.locs:
+        mass_cnts[c] = full_df[full_df[c]]['Mass'].count()
+    df = pd.Series(mass_cnts, name='Protein counts')
+    sns.barplot(df/1000,ax=ax)
+    plt.xticks(rotation=45, ha='right')
+    ax.set_xlabel('Proteins with this location')
+    vals = ax.get_yticks()
+    ax.set_yticklabels(['{:,.1f}k'.format(x) for x in vals])
+    for i in ax.containers:
+        ax.bar_label(i,fmt='{:,.1f}k')
 
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
+    plt.close(fig)
+    return fig
 
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
+st.subheader("Location counts")
+fig = plot_location_counts()
+st.pyplot(fig)
 
-countries = gdp_df['Country Code'].unique()
 
-if not len(countries):
-    st.warning("Select at least one country")
+def plot_multiple_locs():
+    fig, ax = plt.subplots()
+    multi_loc = sum(full_df['locations']>1)
+    single_loc = sum(full_df['locations']==1)
+    ax.pie([multi_loc, single_loc], labels=['Multiple Locations', 'Single Location'], autopct='%1.1f%%', startangle=90)
+    ax.axis('equal')
+    plt.close(fig)
+    return fig
 
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
 
-''
-''
-''
+st.subheader("Multiple locations")
+fig = plot_multiple_locs()
+st.pyplot(fig)
+st.write("Fig X: Pie chart showing the proportion of proteins with a single location vs multiple locations to predict.")
 
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
+st.header("Features")
+def amino_acid_plot():
+    fig, ax = plt.subplots()
+    sns.boxplot(full_df[config.amino_acid_cols],fliersize=2,ax=ax)
+    ax.set_xticklabels([a[0] for a in config.amino_acid_cols])
+    ax.set_ylabel("Amino acid percent")
+    vals = ax.get_yticks()
+    ax.set_yticklabels(['{:,.0%}'.format(x) for x in vals])
+    plt.close(fig)
+    return fig
 
-st.header('GDP over time', divider='gray')
+fig = amino_acid_plot()
+st.subheader("Amino acid composition")
+st.pyplot(fig)
+st.write("Fig X: The distribution of amino acid composition across proteins. We can see that some amino acids are more common than others.")
 
-''
+def mass_plot(mass_scale):
+    log_scale = mass_scale == 'Log'
+    fig, ax = plt.subplots()
+    sns.histplot(full_df['Mass'], ax=ax, log_scale=log_scale)
+    # ax.set_title("Protein mass distribution")
+    ax.set_ylabel("Mass")
+    plt.close(fig)
+    return fig
 
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
+
+st.subheader("Protein mass distribution")
+mass_scale = st.selectbox(
+    "X axis scale",
+    ("Linear", "Log"),
 )
+fig = mass_plot(mass_scale)
+st.pyplot(fig)
+st.write("Fig X: A histogram of the mass of each protein in the dataset. Use the selector to swap between log and linear x axis.")
 
-''
-''
 
+# Diving into specific locations
+st.header("Explore location specific data")
+location = st.selectbox("Location", config.locs)
+metric = st.selectbox("Metric", config.metrics)
+loc_chart_scale = st.selectbox(
+    key='loc_chart_x_axis_scale',
+    label="X axis scale",
+    options=("Linear", "Log"),
+)
+loc_data = full_df[full_df.loc[:,location]][metric].dropna().values
+all_data = full_df.loc[:,metric].dropna().values
 
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
+def correlation_plot(loc_chart_scale):
+    log_scale = loc_chart_scale == 'Log'
+    fig, ax = plt.subplots()
+    sns.histplot(loc_data,ax=ax,alpha=0.5, stat='density', log_scale=log_scale)
+    sns.histplot(all_data,ax=ax,alpha=0.5, stat='density', log_scale=log_scale)
+    ax.set_xlabel(metric)
+    ax.legend([location,'all proteins'])
+    plt.close(fig)
+    return fig
 
-st.header(f'GDP in {to_year}', divider='gray')
+fig = correlation_plot(loc_chart_scale)
 
-''
+st.subheader(f"{location} vs all proteins distribution for {metric}")
+st.pyplot(fig)
+st.write("Fig X: The distribution of amino acid composition across proteins. We can see that some amino acids are more common than others.")
 
-cols = st.columns(4)
-
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
-
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
-
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
+st.header("Model performance")
+st.write("Here we can see the performance of each model as well as a deep dive into the performance of the best model (the neural network approach), broken down by some factors.")

@@ -1,0 +1,7 @@
+{
+    "uniref clusters": 50079,
+    "clusters joined to uniprot proteins": 39701,
+    "clusters with an extracted location": 18441,
+    "training data": 14753,
+    "test data": 3688
+}

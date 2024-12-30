@@ -1,19 +1,22 @@
-# :earth_americas: GDP dashboard template
+# Protein Location Predictor streamlit app
+A Streamlit app related to the problem of modelling protein locations.
 
-A simple Streamlit app showing the GDP of different countries in the world.
-
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://gdp-dashboard-template.streamlit.app/)
+### The app is hosted on streamlit at [protein-location-predictor.streamlit.app](https://protein-location-predictor.streamlit.app/)
+If this isn't working for some reason, the below also shows how to run it locally.
 
 ### How to run it on your own machine
+1. Create and activate the virtual environment
+    ```
+    python3 -m venv venv
+    source venv/bin/activate
+    ```
 
-1. Install the requirements
-
+2. Install the requirements
    ```
    $ pip install -r requirements.txt
    ```
 
-2. Run the app
-
+3. Run the app
    ```
    $ streamlit run streamlit_app.py
    ```
