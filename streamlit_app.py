@@ -16,6 +16,7 @@ st.set_page_config(
     page_icon=':microscope:',
 )
 
+
 @st.cache_data
 def get_full_data():
     data_filename = os.path.join(DATA_FILEPATH, 'model_scoring.tsv')
@@ -30,8 +31,18 @@ def get_data_cleaning_stats():
     df.name='Protein counts'
     return df
 
+
+@st.cache_data
+def get_model_performance_stats():
+    data_filename = os.path.join(DATA_FILEPATH, 'model_stats.json')
+    df = pd.read_json(data_filename, typ='series')
+    df.name='Accuracy'
+    return df
+
+
 full_df = get_full_data()
 cleaning_stats = get_data_cleaning_stats()
+model_stats = get_model_performance_stats()
 
 st.title(":microscope: Protein Location Predictor")
 st.write("Here we plot charts related to the initial data gathering and statistics for the proteins in our dataset.")
@@ -52,6 +63,7 @@ def plot_data_cleaning_stats():
     plt.close(fig)
     return fig
 
+
 st.subheader("Data cleaning")
 fig = plot_data_cleaning_stats()
 st.pyplot(fig)
@@ -64,7 +76,7 @@ def plot_location_counts():
     for c in config.locs:
         mass_cnts[c] = full_df[full_df[c]]['Mass'].count()
     df = pd.Series(mass_cnts, name='Protein counts')
-    sns.barplot(df/1000,ax=ax)
+    sns.barplot(df.sort_values(ascending=False)/1000,ax=ax)
     plt.xticks(rotation=45, ha='right')
     ax.set_xlabel('Proteins with this location')
     vals = ax.get_yticks()
@@ -74,6 +86,7 @@ def plot_location_counts():
 
     plt.close(fig)
     return fig
+
 
 st.subheader("Location counts")
 fig = plot_location_counts()
@@ -96,6 +109,8 @@ st.pyplot(fig)
 st.write("Fig X: Pie chart showing the proportion of proteins with a single location vs multiple locations to predict.")
 
 st.header("Features")
+
+
 def amino_acid_plot():
     fig, ax = plt.subplots()
     sns.boxplot(full_df[config.amino_acid_cols],fliersize=2,ax=ax)
@@ -106,10 +121,12 @@ def amino_acid_plot():
     plt.close(fig)
     return fig
 
+
 fig = amino_acid_plot()
 st.subheader("Amino acid composition")
 st.pyplot(fig)
 st.write("Fig X: The distribution of amino acid composition across proteins. We can see that some amino acids are more common than others.")
+
 
 def mass_plot(mass_scale):
     log_scale = mass_scale == 'Log'
@@ -143,6 +160,7 @@ loc_chart_scale = st.selectbox(
 loc_data = full_df[full_df.loc[:,location]][metric].dropna().values
 all_data = full_df.loc[:,metric].dropna().values
 
+
 def correlation_plot(loc_chart_scale):
     log_scale = loc_chart_scale == 'Log'
     fig, ax = plt.subplots()
@@ -152,6 +170,7 @@ def correlation_plot(loc_chart_scale):
     ax.legend([location,'all proteins'])
     plt.close(fig)
     return fig
+
 
 fig = correlation_plot(loc_chart_scale)
 
