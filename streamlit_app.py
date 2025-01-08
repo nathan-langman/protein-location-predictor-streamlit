@@ -180,3 +180,21 @@ st.write("Fig X: The distribution of amino acid composition across proteins. We 
 
 st.header("Model performance")
 st.write("Here we can see the performance of each model as well as a deep dive into the performance of the best model (the neural network approach), broken down by some factors.")
+
+def plot_model_performance():
+    fig, ax = plt.subplots()
+    sns.barplot(model_stats,ax=ax)
+    plt.xticks(rotation=45, ha='right')
+    vals = ax.get_yticks()
+    ax.set_yticklabels(['{:.1%}'.format(x) for x in vals])
+    for i in ax.containers:
+        ax.bar_label(i,fmt='{:.1%}')
+
+    plt.close(fig)
+    return fig
+
+
+st.subheader("Validation data prediction accuracy")
+fig = plot_model_performance()
+st.pyplot(fig)
+st.write("This chart shows the accuracy of the models trained on an unseen validation set.")
