@@ -178,9 +178,7 @@ st.subheader(f"{location} vs all proteins distribution for {metric}")
 st.pyplot(fig)
 st.write("Fig X: The distribution of amino acid composition across proteins. We can see that some amino acids are more common than others.")
 
-st.header("Model performance")
-st.write("Here we can see the performance of each model as well as a deep dive into the performance of the best model (the neural network approach), broken down by some factors.")
-
+st.header("Test data prediction accuracy")
 def plot_model_performance():
     fig, ax = plt.subplots()
     sns.barplot(model_stats,ax=ax)
@@ -193,8 +191,6 @@ def plot_model_performance():
     plt.close(fig)
     return fig
 
-
-st.subheader("Validation data prediction accuracy")
 fig = plot_model_performance()
 st.pyplot(fig)
-st.write("This chart shows the accuracy of the models trained on an unseen validation set.")
+st.write("This chart shows the accuracy of the models trained on an unseen test set.")
