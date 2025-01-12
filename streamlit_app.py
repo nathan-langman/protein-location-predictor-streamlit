@@ -205,7 +205,7 @@ st.pyplot(fig)
 st.write("This chart shows the accuracy of the models trained on an unseen test set.")
 
 
-st.header("Random forest tuned model stats")
+st.header("Random forest tuned model test data stats")
 def plot_rf_model_stats():
     fig, ax = plt.subplots()
     sns.barplot(rf_model_stats,ax=ax)
