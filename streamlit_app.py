@@ -40,9 +40,18 @@ def get_model_performance_stats():
     return df
 
 
+@st.cache_data
+def get_rf_model_performance_stats():
+    data_filename = os.path.join(DATA_FILEPATH, 'rf_tuned_stats.json')
+    df = pd.read_json(data_filename, typ='series')
+    df.name='stats'
+    return df
+
+
 full_df = get_full_data()
 cleaning_stats = get_data_cleaning_stats()
 model_stats = get_model_performance_stats()
+rf_model_stats = get_rf_model_performance_stats()
 
 st.title(":microscope: Protein Location Predictor")
 st.write("Here we plot charts related to the initial data gathering and statistics for the proteins in our dataset.")
@@ -106,7 +115,7 @@ def plot_multiple_locs():
 st.subheader("Multiple locations")
 fig = plot_multiple_locs()
 st.pyplot(fig)
-st.write("Fig X: Pie chart showing the proportion of proteins with a single location vs multiple locations to predict.")
+st.write("Pie chart showing the proportion of proteins with a single location vs multiple locations to predict.")
 
 st.header("Features")
 
@@ -125,7 +134,7 @@ def amino_acid_plot():
 fig = amino_acid_plot()
 st.subheader("Amino acid composition")
 st.pyplot(fig)
-st.write("Fig X: The distribution of amino acid composition across proteins. We can see that some amino acids are more common than others.")
+st.write("The distribution of amino acid composition across proteins. We can see that some amino acids are more common than others.")
 
 
 def mass_plot(mass_scale):
@@ -145,7 +154,7 @@ mass_scale = st.selectbox(
 )
 fig = mass_plot(mass_scale)
 st.pyplot(fig)
-st.write("Fig X: A histogram of the mass of each protein in the dataset. Use the selector to swap between log and linear x axis.")
+st.write("A histogram of the mass of each protein in the dataset. Use the selector to swap between log and linear x axis.")
 
 
 # Diving into specific locations
@@ -176,7 +185,7 @@ fig = correlation_plot(loc_chart_scale)
 
 st.subheader(f"{location} vs all proteins distribution for {metric}")
 st.pyplot(fig)
-st.write("Fig X: The distribution of amino acid composition across proteins. We can see that some amino acids are more common than others.")
+st.write("The distribution of amino acid composition across proteins. We can see that some amino acids are more common than others.")
 
 st.header("Test data prediction accuracy")
 def plot_model_performance():
@@ -194,3 +203,24 @@ def plot_model_performance():
 fig = plot_model_performance()
 st.pyplot(fig)
 st.write("This chart shows the accuracy of the models trained on an unseen test set.")
+
+
+st.header("Random forest tuned model stats")
+def plot_rf_model_stats():
+    fig, ax = plt.subplots()
+    sns.barplot(rf_model_stats,ax=ax)
+    plt.xticks(rotation=45, ha='right')
+    vals = ax.get_yticks()
+    ax.set_yticklabels(['{:.1%}'.format(x) for x in vals])
+    for i in ax.containers:
+        ax.bar_label(i,fmt='{:.1%}')
+
+    plt.close(fig)
+    return fig
+
+fig = plot_rf_model_stats()
+st.pyplot(fig)
+st.write("""This chart shows the precision, recall, accuracy of the random forest runed model trained on an unseen test set.
+         Here, precision, recall and 'location specific accuracy' are all calculated at the level of the individual prediction (e.g. each protein would have six data points for each metric as we
+         calculate the scores for each of the different locations being predicted. By comparison, 'overall prediction accuracy' is calculated based on the accuracy of the entire set of locations for 
+         a given protein.)""")
